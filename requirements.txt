@@ -1,0 +1,18 @@
+# Core dependencies
+python-dotenv
+ollama
+
+# Optional
+mistralai
+
+# Async support
+aiohttp
+asyncio
+
+# Utilities
+typing-extensions
+python-json-logger
+fastapi
+uvicorn[standard]
+pydantic
+beautifulsoup4

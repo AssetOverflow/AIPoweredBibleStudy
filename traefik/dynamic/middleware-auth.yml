@@ -1,0 +1,9 @@
+http:
+  middlewares:
+    auth-middleware:
+      basicAuth:
+        users:
+          - "admin:divinehaven2023"
+        removeHeader: true
+        realm: "Divine Haven Secure Dashboard"
+        headerField: "X-WebAuth-User"

@@ -1,0 +1,119 @@
+services:
+  traefik:
+    image: traefik:v2.10
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+    ports:
+      - "80:80"
+      - "8080:8080"  # Dashboard
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./traefik.yml:/etc/traefik/traefik.yml:ro
+    networks:
+      - bible_study_net
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.dashboard.rule=Host(`dashboard.localhost`)"
+      - "traefik.http.routers.dashboard.service=api@internal"
+      - "traefik.http.routers.dashboard.entrypoints=web"
+    restart: always
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "http://localhost:8080/api/rawdata"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: frontend
+    networks:
+      - bible_study_net
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.frontend.rule=PathPrefix(`/`)"
+      - "traefik.http.services.frontend.loadbalancer.server.port=3000"
+      - "traefik.http.routers.frontend.entrypoints=web"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    expose:
+      - "8000"
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - LOG_LEVEL=INFO
+      - RATE_LIMIT_TOKENS=100000
+      - RATE_LIMIT_WINDOW=60
+      - RUN_MODE=api
+      - PYTHONPATH=/app
+      - TZ=UTC
+      - AGENT_LIBRARY_PATH=/app/agent_library_example.json
+      - MISTRAL_API_KEY=${MISTRAL_API_KEY:-}  # Optional, can be blank
+    depends_on:
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./backend/app:/app
+      - ./logs:/app/logs
+    networks:
+      - bible_study_net
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.backend.rule=Host(`api.divine-haven.org`)"
+      - "traefik.http.routers.backend.entrypoints=websecure"
+      - "traefik.http.routers.backend.tls.certresolver=letsencrypt"
+      - "traefik.http.services.backend.loadbalancer.server.port=8000"
+      - "traefik.http.middlewares.backend-strip.stripprefix.prefixes=/api/v1"
+      - "traefik.http.routers.backend.middlewares=backend-strip@docker,rate-limit@file"
+      # WebSocket configuration
+      - "traefik.http.routers.backend-ws.rule=Host(`api.divine-haven.org`) && PathPrefix(`/api/v1/ws`)"
+      - "traefik.http.routers.backend-ws.entrypoints=websecure"
+      - "traefik.http.routers.backend-ws.tls.certresolver=letsencrypt"
+      - "traefik.http.services.backend-ws.loadbalancer.server.port=8000"
+      - "traefik.http.middlewares.backend-ws-strip.stripprefix.prefixes=/api/v1/ws"
+      - "traefik.http.routers.backend-ws.middlewares=backend-ws-strip@docker"
+    restart: always
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  redis:
+    image: redis/redis-stack-server:latest
+    networks:
+      - bible_study_net
+    volumes:
+      - redis_data:/data
+      - ./redis.conf:/etc/redis/redis.conf
+    command: redis-stack-server /etc/redis/redis.conf
+    environment:
+      - TZ=UTC
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -h localhost -p 6379 ping | grep PONG || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: always
+
+volumes:
+  redis_data:
+
+networks:
+  bible_study_net:
+    driver: bridge

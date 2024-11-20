@@ -1,0 +1,40 @@
+http:
+  middlewares:
+    rate-limit:
+      rateLimit:
+        average: 100
+        burst: 50
+        period: 1s
+        sourceCriterion:
+          ipStrategy:
+            depth: 1
+            excludedIPs:
+              - "127.0.0.1"
+              - "::1"
+
+    bible-study-limit:
+      rateLimit:
+        average: 30
+        burst: 50
+        period: 1s
+        sourceCriterion:
+          ipStrategy:
+            depth: 1
+
+    chat-rate-limit:
+      rateLimit:
+        average: 5
+        burst: 10
+        period: 1s
+        sourceCriterion:
+          ipStrategy:
+            depth: 1
+
+    auth-rate-limit:
+      rateLimit:
+        average: 10
+        burst: 15
+        period: 1m
+        sourceCriterion:
+          ipStrategy:
+            depth: 1

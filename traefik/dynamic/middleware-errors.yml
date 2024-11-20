@@ -1,0 +1,17 @@
+http:
+  middlewares:
+    error-pages:
+      errors:
+        status:
+          - "400-404"
+          - "500-599"
+        service: error-handler
+        query: "/error/{status}.html"
+
+    api-errors:
+      errors:
+        status:
+          - "400-404"
+          - "500-599"
+        service: api-error-handler
+        query: "/api/error/{status}"
