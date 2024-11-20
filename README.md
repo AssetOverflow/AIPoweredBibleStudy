@@ -1,2 +1,5 @@
-# Use this for running in API mode instead of CLI
-export RUN_MODE=api  # To run in API mode
+# AIPoweredBibleStudy
+
+---
+
+AI Powered Bible Study Application using the latest in LLMs (chatbot AI tech) and the use of the cutting edge agentic workflow frameworks for taking bible study to the very max.
